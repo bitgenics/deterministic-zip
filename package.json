@@ -1,0 +1,17 @@
+{
+  "name": "deterministic-zip",
+  "version": "1.0.0",
+  "description": "A ZIP library that generates the same zip file from the same files every time",
+  "main": "index.js",
+  "repository": {
+    "url": "git@github.com:bitgenics/deterministic-zip.git",
+    "type": "git"
+  },
+  "author": "Erwin van der Koogh <erwin@bitgenics.io>",
+  "license": "MIT",
+  "dependencies": {
+    "async": "^2.1.4",
+    "crc32-stream": "^1.0.0",
+    "minimatch": "^3.0.3"
+  }
+}
