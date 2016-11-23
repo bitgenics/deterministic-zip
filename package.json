@@ -2,6 +2,7 @@
   "name": "deterministic-zip",
   "version": "1.0.0",
   "description": "A ZIP library that generates the same zip file from the same files every time",
+  "files": ["index.js"],
   "main": "index.js",
   "repository": {
     "url": "git@github.com:bitgenics/deterministic-zip.git",
