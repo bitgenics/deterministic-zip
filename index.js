@@ -54,17 +54,6 @@ const initFileHeaderTempl = () => {
 	return headerTempl
 }
 
-const initDirectoryHeaderTempl = () => {
-	const headerTempl = Buffer.alloc(30, 0);
-	headerTempl.writeInt32LE(0x04034b50, 0); //signature
-	headerTempl.writeInt16LE(20, 4 ); //extractVersion
-	headerTempl.writeInt16LE(0b1000, 6); //bitflag (Data Descriptor + UTF8)
-	headerTempl.writeInt16LE(0, 8); //compressionType
-	headerTempl.writeInt16LE(0x6020, 10); //ModTime 12:01pm
-	headerTempl.writeInt16LE(0x21, 12); //ModDate 1980/1/1
-	return headerTempl
-}
-
 const initFileCentralDirTempl = () => {
 	const directoryHeader = Buffer.alloc(46, 0);
 	directoryHeader.writeInt32LE(0x02014b50, 0); //signature
@@ -76,29 +65,17 @@ const initFileCentralDirTempl = () => {
 	return directoryHeader;
 }
 
-const initDirectoryCentralDirTempl = () => {
-	const directoryHeader = Buffer.alloc(46, 0);
-	directoryHeader.writeInt32LE(0x02014b50, 0); //signature
-	directoryHeader.writeInt16LE(20, 6 ); //extractVersion
-	directoryHeader.writeInt16LE(0b1000, 8); //bitflag (Data Descriptor + UTF8)
-	directoryHeader.writeInt16LE(0, 10); //compressionType
-	directoryHeader.writeInt16LE(0x6020, 12); //ModTime 12:01pm
-	directoryHeader.writeInt16LE(0x21, 14); //ModDate 1980/1/1
-	return directoryHeader;
-}
-
 class Zipfile {
 	constructor(files, zipfile) {
 		this.index = 0;
 		files.sort((a, b) => {
-			return a.relativePath.toUpperCase() > b.relativePath.toUpperCase()
+			return a.relativePath.localeCompare(b.relativePath);
 		});
 		this.fileObjects = files;
 		this.outputStream = fs.createWriteStream(zipfile);
 		this.fileheaderTempl = initFileHeaderTempl();
-		this.directoryHeaderTempl = initDirectoryHeaderTempl();
 		this.fileCentralDirTempl = initFileCentralDirTempl();
-		this.directoryCentralDirTempl = initDirectoryCentralDirTempl();
+		this.numberOfFiles = 0;
 	}
 
 	_write(buffer, callback) {
@@ -107,7 +84,7 @@ class Zipfile {
 	}
 
 	_getHeaderBuffers(file) {
-		const headerTempl = file.isDirectory() ? this.directoryHeaderTempl : this.fileheaderTempl;
+		const headerTempl = this.fileheaderTempl;
 		const filenameBuffer = Buffer.from(file.relativePath, 'utf8');
 		headerTempl.writeInt16LE(filenameBuffer.length, 26);
 		return [headerTempl, filenameBuffer]
@@ -129,9 +106,10 @@ class Zipfile {
 
 	_writeEntry(file, callback) {
 		file.headerOffset = this.index;
-		this._writeFileHeader(file, (err) => {
-			if(err) return callback(err);
-			if(file.isFile() ) {
+		if(file.isFile() ) {
+			this.numberOfFiles++
+			this._writeFileHeader(file, (err) => {
+				if(err) return callback(err);
 				const readStream = fs.createReadStream(file.absolutePath);
 				const checksum = new DeflateCRC32Stream();
 				checksum.on('end', () => {
@@ -142,33 +120,34 @@ class Zipfile {
 					this._writeDataDescriptor(file, callback)
 				})
 				readStream.pipe(checksum).pipe(this.outputStream, {end: false});
-			} else {
-				file.checksum = 0;
-				file.uncompressedSize = 0;
-				file.compressedSize = 0;
-				callback();
-			}
-		})
+			})
+		} else {
+			return callback()
+		}
 	}
 
 	_writeDirectoryEntry(file, callback) {
-		const directoryTempl = file.isDirectory() ? this.directoryCentralDirTempl : this.fileCentralDirTempl;
-		const filenameBuffer = Buffer.from(file.relativePath, 'utf8')
-		directoryTempl.writeUIntLE(file.checksum, 16, 4); //crc-32
-		directoryTempl.writeInt32LE(file.compressedSize, 20); //compressedSize
-		directoryTempl.writeInt32LE(file.uncompressedSize, 24); //uncompressedSize
-		directoryTempl.writeInt16LE(filenameBuffer.length, 28); //filename length
-		directoryTempl.writeInt32LE(file.headerOffset, 42);
-		const buffers = [directoryTempl, filenameBuffer]
-		async.eachSeries(buffers, (buffer, cb) => { this._write(buffer, cb) }, callback);
+		if(file.isDirectory() ) {
+			return callback();
+		} else {
+			const directoryTempl = this.fileCentralDirTempl;
+			const filenameBuffer = Buffer.from(file.relativePath, 'utf8')
+			directoryTempl.writeUIntLE(file.checksum, 16, 4); //crc-32
+			directoryTempl.writeInt32LE(file.compressedSize, 20); //compressedSize
+			directoryTempl.writeInt32LE(file.uncompressedSize, 24); //uncompressedSize
+			directoryTempl.writeInt16LE(filenameBuffer.length, 28); //filename length
+			directoryTempl.writeInt32LE(file.headerOffset, 42);
+			const buffers = [directoryTempl, filenameBuffer]
+			async.eachSeries(buffers, (buffer, cb) => { this._write(buffer, cb) }, callback);			
+		}
 	}
 
 	_writeEndRecord(callback) {
 		const directorySize = this.index - this.directoryOffset;
 		const endRecord = Buffer.alloc(22, 0);
 		endRecord.writeInt32LE(0x06054b50, 0)
-		endRecord.writeInt16LE(this.fileObjects.length, 8); //entries on disk
-		endRecord.writeInt16LE(this.fileObjects.length, 10); //total entries
+		endRecord.writeInt16LE(this.numberOfFiles, 8); //entries on disk
+		endRecord.writeInt16LE(this.numberOfFiles, 10); //total entries
 		endRecord.writeInt32LE(directorySize, 12); //size directory
 		endRecord.writeInt32LE(this.directoryOffset, 16); //directory offset
 		this._write(endRecord, callback);
