@@ -7,7 +7,7 @@ const minimatch = require("minimatch")
 const shouldInclude2 = (file, options) => {
 	const include = options.includes.find((pattern) => minimatch(file, pattern, {matchBase: true}));
 	if(include) {
-		const exclude = options.excludes.find((pattern) => minimatch(file, pattern, {matchBase: true, debug: true}));
+		const exclude = options.excludes.find((pattern) => minimatch(file, pattern, {matchBase: true}));
 		return include && !exclude
 	} else {
 		return false
