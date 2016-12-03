@@ -5,13 +5,9 @@ const DeflateCRC32Stream = require('crc32-stream').DeflateCRC32Stream;
 const minimatch = require("minimatch")
 
 const shouldInclude2 = (file, options) => {
-	console.log(file);
 	const include = options.includes.find((pattern) => minimatch(file, pattern, {matchBase: true}));
-	console.log(include)
 	if(include) {
 		const exclude = options.excludes.find((pattern) => minimatch(file, pattern, {matchBase: true, debug: true}));
-		console.log(exclude)
-		console.log(`Should we include: ${file}: ${include && !exclude}`)
 		return include && !exclude
 	} else {
 		return false
@@ -204,12 +200,8 @@ zip = (dir, destination, options, callback) => {
 	options.excludes = options.excludes || ['.git', 'CVS', '.svn', '.hg', '.lock-wscript', '.wafpickle-N', '*.swp', '.DS_Store', '._*', 'npm-debug.log']
 	options.cwd = options.cwd || '.';
 	getFiles(dir, options , (err, files) => {
-		console.log('Zipping the following files:');
-		console.log(files);
 		zipfile = new Zipfile(files, destination);
-		zipfile.zip((err) => {
-			console.log('Done!');
-		});
+		zipfile.zip(callback);
 	})	
 }
 
