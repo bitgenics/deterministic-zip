@@ -17,7 +17,7 @@ const shouldInclude2 = (file, options) => {
 }
 
 const addDir = (list, options, dir, callback) => {
-	fs.readdir(dir, {}, (err, files) => {
+	fs.readdir(dir, (err, files) => {
 		const dirs = []
 		if(err) return callback(err);
 		files.forEach((elem) => {
@@ -45,8 +45,24 @@ const getFiles = (dir, options, callback) => {
 	})
 }
 
+const allocateBuffer = (size) => {
+	if(Buffer.alloc) {
+		return Buffer.alloc(30, 0);
+	} else {
+		return new Buffer(size).fill(0);
+	}
+}
+
+const fromBuffer = (string) => {
+	if(Buffer.alloc) {
+		return Buffer.from(string, 'utf8');
+	} else {
+		return new Buffer(string, 'utf8');
+	}
+}
+
 const initFileHeaderTempl = () => {
-	const headerTempl = Buffer.alloc(30, 0);
+	const headerTempl = allocateBuffer(30);
 	headerTempl.writeInt32LE(0x04034b50, 0); //signature
 	headerTempl.writeInt16LE(20, 4 ); //extractVersion
 	headerTempl.writeInt16LE(0x808, 6); //bitflag (Data Descriptor + UTF8)
@@ -57,7 +73,7 @@ const initFileHeaderTempl = () => {
 }
 
 const initFileCentralDirTempl = () => {
-	const directoryHeader = Buffer.alloc(46, 0);
+	const directoryHeader = allocateBuffer(46);
 	directoryHeader.writeInt32LE(0x02014b50, 0); //signature
 	directoryHeader.writeInt16LE(20, 6 ); //extractVersion
 	directoryHeader.writeInt16LE(0x808, 8); //bitflag (Data Descriptor + UTF8)
@@ -87,7 +103,7 @@ class Zipfile {
 
 	_getHeaderBuffers(file) {
 		const headerTempl = this.fileheaderTempl;
-		const filenameBuffer = Buffer.from(file.relativePath, 'utf8');
+		const filenameBuffer = fromBuffer(file.relativePath);
 		headerTempl.writeInt16LE(filenameBuffer.length, 26);
 		return [headerTempl, filenameBuffer]
 	}
@@ -98,7 +114,7 @@ class Zipfile {
 	}
 
 	_writeDataDescriptor(file, callback) {
-		const dataDescriptor = Buffer.alloc(16)
+		const dataDescriptor = allocateBuffer(16)
 		dataDescriptor.writeInt32LE(0x08074b50, 0); //signature
 		dataDescriptor.writeUIntLE(file.checksum, 4, 4); //crc-32
 		dataDescriptor.writeInt32LE(file.compressedSize, 8); //compressed size
@@ -133,7 +149,7 @@ class Zipfile {
 			return callback();
 		} else {
 			const directoryTempl = this.fileCentralDirTempl;
-			const filenameBuffer = Buffer.from(file.relativePath, 'utf8')
+			const filenameBuffer = fromBuffer(file.relativePath)
 			directoryTempl.writeUIntLE(file.checksum, 16, 4); //crc-32
 			directoryTempl.writeInt32LE(file.compressedSize, 20); //compressedSize
 			directoryTempl.writeInt32LE(file.uncompressedSize, 24); //uncompressedSize
@@ -146,7 +162,7 @@ class Zipfile {
 
 	_writeEndRecord(callback) {
 		const directorySize = this.index - this.directoryOffset;
-		const endRecord = Buffer.alloc(22, 0);
+		const endRecord = allocateBuffer(22);
 		endRecord.writeInt32LE(0x06054b50, 0)
 		endRecord.writeInt16LE(this.numberOfFiles, 8); //entries on disk
 		endRecord.writeInt16LE(this.numberOfFiles, 10); //total entries
