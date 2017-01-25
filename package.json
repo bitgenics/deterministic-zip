@@ -1,6 +1,6 @@
 {
   "name": "deterministic-zip",
-  "version": "1.0.3",
+  "version": "1.0.4",
   "description": "A ZIP library that generates the same zip file from the same files every time",
   "files": [
     "index.js"
