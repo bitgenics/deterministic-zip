@@ -1,3 +1,5 @@
+'use strict';
+
 const fs = require('fs');
 const path = require('path');
 const async = require('async');
@@ -19,7 +21,7 @@ const addDir = (list, options, dir, callback) => {
 		const dirs = []
 		if(err) return callback(err);
 		files.forEach((elem) => {
-			file = dir + '/' + elem;
+			const file = dir + '/' + elem;
 			const info = fs.statSync(file);
 			info.relativePath = path.relative(options.cwd, file);
 			const check = info.isDirectory() ? './' + info.relativePath + '/' : './' + info.relativePath;
@@ -170,7 +172,7 @@ class Zipfile {
 	}
 }
 
-zip = (dir, destination, options, callback) => {
+const zip = (dir, destination, options, callback) => {
 	if(callback === undefined) {
 		callback = options;
 		options = {}
@@ -179,7 +181,7 @@ zip = (dir, destination, options, callback) => {
 	options.excludes = options.excludes || ['.git', 'CVS', '.svn', '.hg', '.lock-wscript', '.wafpickle-N', '*.swp', '.DS_Store', '._*', 'npm-debug.log']
 	options.cwd = options.cwd || '.';
 	getFiles(dir, options , (err, files) => {
-		zipfile = new Zipfile(files, destination);
+		const zipfile = new Zipfile(files, destination);
 		zipfile.zip(callback);
 	})	
 }
