@@ -47,7 +47,7 @@ const getFiles = (dir, options, callback) => {
 
 const allocateBuffer = (size) => {
 	if(Buffer.alloc) {
-		return Buffer.alloc(30, 0);
+		return Buffer.alloc(size, 0);
 	} else {
 		return new Buffer(size).fill(0);
 	}
