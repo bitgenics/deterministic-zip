@@ -14,7 +14,7 @@
   "license": "MIT",
   "dependencies": {
     "async": "^3.1.0",
-    "crc32-stream": "^1.0.1",
+    "crc32-stream": "^3.0.0",
     "minimatch": "^3.0.3"
   }
 }
